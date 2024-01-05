@@ -2,20 +2,24 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"net"
 	"os"
+
+	"github.com/Kurler3/go_redis/resp"
 )
 
 func main() {
 
+
 	// Listen with TCP on port 8080
-	l, err := net.Listen("tcp", ":8080")
+	l, err := net.Listen("tcp", ":6379")
 
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
+	fmt.Println("Listening on port 6379")
 
 	// Accept connections
 	conn, err := l.Accept()
@@ -25,37 +29,28 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Println("Connection accepted!")
+
 	// Disconnect before returning
 	defer conn.Close()
 
 	// Receive commands from clients
 	for {
 
-		// Make buffer
-		buff := make([]byte, 1024)
+		newResp := resp.NewResp(conn)
+		value, err := newResp.Read()
 
-		// Put conn data in buffer
-		_, err := conn.Read(buff)
-
-		// If error and not EOF (in this case end of connection => break loop)
 		if err != nil {
-
-			if err == io.EOF {
-				break
-			}
-
-			fmt.Println("Error while reading data: ", err)
-			os.Exit(1)
-
+			fmt.Println(err)
+			break
 		}
 
-		buff.
+		fmt.Println(value)
 
-		// Write back to client
-		conn.Write([]byte("PONG\r\n"));
+		// ignore request and send back a PONG
+		conn.Write([]byte("+OK\r\n"))
 	}
 
-
 	// Close connection
-	fmt.Println("Connection closed! See ya next time");
+	fmt.Println("Connection closed! See ya next time :D");
 }
