@@ -175,3 +175,108 @@ func (r *Resp) readBulk() (Value, error) {
 	// Return the value
 	return v, nil
 }
+
+
+// Marshal Value to byte array (to RESP response)
+func (v Value) Marshal() []byte {
+	switch v.typ {
+	case "array":
+		return v.marshalArray()
+	case "bulk":
+		return v.marshalBulk()
+	case "string":
+		return v.marshalString()
+	case "null":
+		return v.marshallNull()
+	case "error":
+		return v.marshallError()
+	default:
+		return []byte{}
+	}
+}
+
+
+// marshal String
+func (v Value) marshalString() []byte {
+	var bytes []byte
+	bytes = append(bytes, STRING)
+	bytes = append(bytes, v.str...)
+	bytes = append(bytes, '\r', '\n')
+	return bytes
+}
+
+// marshal Array
+func (v Value) marshalArray() []byte {
+
+	// Get the len
+	len := len(v.array)
+
+	// Init bytes array
+	var bytes []byte
+
+	// Append array type
+	bytes = append(bytes, ARRAY)
+
+	// Append array size
+	bytes = append(bytes, strconv.Itoa(len)...)
+
+	// Append CRLF
+	bytes = append(bytes, '\r', '\n')
+
+	// For each item in the array => append their bytes
+	for _, item := range v.array {
+		bytes = append(bytes, item.Marshal()...)
+	}
+
+	return bytes
+}
+
+// marshal Bulk
+func (v Value) marshalBulk() []byte {
+	var bytes []byte
+	bytes = append(bytes, BULK)
+	bytes = append(bytes, strconv.Itoa(len(v.bulk))...)
+	bytes = append(bytes, '\r', '\n')
+	bytes = append(bytes, v.bulk...)
+	bytes = append(bytes, '\r', '\n')
+	return bytes
+}
+
+// marshal Error
+func (v Value) marshallError() []byte {
+	var bytes []byte
+	bytes = append(bytes, ERROR)
+	bytes = append(bytes, v.str...)
+	bytes = append(bytes, '\r', '\n')
+
+	return bytes
+}
+
+// marshal Null
+func (v Value) marshallNull() []byte {
+	return []byte("$-1\r\n")
+}
+
+
+
+// Writer struct (will write back to the client)
+type Writer struct {
+	writer io.Writer
+}
+
+// Get a new writer
+func NewWriter(w io.Writer) *Writer {
+	return &Writer{writer: w}
+}
+
+// Write to the client
+func (w *Writer) Write(v Value) error {
+	var bytes = v.Marshal()
+
+	_, err := w.writer.Write(bytes)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

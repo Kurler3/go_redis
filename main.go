@@ -45,10 +45,10 @@ func main() {
 			break
 		}
 
-		fmt.Println(value)
 
-		// ignore request and send back a PONG
-		conn.Write([]byte("+OK\r\n"))
+
+		writer := resp.NewWriter(conn)
+		writer.Write(value)
 	}
 
 	// Close connection
