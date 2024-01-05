@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/Kurler3/go_redis/handlers"
 	"github.com/Kurler3/go_redis/resp"
 )
 
@@ -37,7 +38,10 @@ func main() {
 	// Receive commands from clients
 	for {
 
+		// Get the RESP object
 		newResp := resp.NewResp(conn)
+
+		// Get the value from the RESP object as a golang struct 
 		value, err := newResp.Read()
 
 		if err != nil {
@@ -45,10 +49,49 @@ func main() {
 			break
 		}
 
+		// Check if the type is array (needs to be)
+		if value.Typ != "array" {
+			fmt.Println("Invalid request type. Expecting array")
+			break
+		}
 
+		// Check if more than 0 items in the array
+		if len(value.Array) == 0 {
+			fmt.Println("Invalid request. Expecting at least 1 item")
+			break
+		}
 
+		// Write back to client
 		writer := resp.NewWriter(conn)
-		writer.Write(value)
+
+
+		// Get the command (first item of the array.bulk)
+		command := value.Array[0].Bulk
+
+		if command == "COMMAND" {
+			// Write the result to the client
+			writer.Write(resp.Value{Typ: "string", Str: "CONNECTED"})
+			continue
+		}
+
+		// Get the arguments (everything but the first value on the array)
+		args := value.Array[1:]
+
+		// Find the handler and check if it is ok or not (if not ok => log error)
+		handler, ok := handlers.Handlers[command]
+
+		if !ok {
+			keys := handlers.GetHandlerKeys()
+			fmt.Println("Invalid command. Expecting: ", keys)
+			writer.Write(resp.Value{Typ: "string", Str: "Invalid command",})
+			continue
+		}
+
+		// Get the result from the handler (array of bytes)
+		result := handler(args)
+
+		// Write the result to the client
+		writer.Write(result)
 	}
 
 	// Close connection
