@@ -5,3 +5,17 @@ $3
 key
 $5
 field
+*3
+$3
+SET
+$4
+key2
+$6
+field2
+*3
+$3
+SET
+$4
+key2
+$5
+field

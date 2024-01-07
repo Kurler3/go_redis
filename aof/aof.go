@@ -79,7 +79,7 @@ func (aof *Aof) Write(value resp.Value) error {
 }
 
 // Read AOF file 
-func (aof *Aof) Read(readFunc func(value resp.Value)) {
+func (aof *Aof) Read(writeFunc func(value resp.Value)) {
 	aof.mu.Lock()
 	defer aof.mu.Unlock()
 	
@@ -87,18 +87,30 @@ func (aof *Aof) Read(readFunc func(value resp.Value)) {
 	// Get the RESP object
 	newResp := resp.NewResp(aof.file)
 
-	// Get the value from the RESP object as a golang struct 
-	value, err := newResp.Read()
+	// Init values slice
+	values := make([]resp.Value, 0)
 
-	if err != nil {
+	for {
 
-		if err == io.EOF { return }
+		// Get the value from the RESP object as a golang struct 
+		value, err := newResp.Read()
 
-		fmt.Println("ERR: Error reading from AOF File: ", err.Error())
+		if err != nil {
 
-		os.Exit(1)
+			if err == io.EOF { break }
+
+			fmt.Println("ERR: Error reading from AOF File: ", err.Error())
+
+			os.Exit(1)
+		}
+
+		// Append the value
+		values = append(values, value)
 	}
-
-	// Return function
-	readFunc(value)
+	
+	// For each value in the slice, call the readFunc function
+	for _, value := range values {
+		writeFunc(value)
+	}
+	
 }
