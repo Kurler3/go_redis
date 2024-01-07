@@ -80,6 +80,7 @@ func main() {
 		// Find the handler and check if it is ok or not (if not ok => log error)
 		handler, ok := handlers.Handlers[command]
 
+		// If didn't find handler for specified command, show error and available commands.
 		if !ok {
 			keys := handlers.GetHandlerKeys()
 			fmt.Println("Invalid command. Expecting: ", keys)

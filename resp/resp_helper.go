@@ -35,7 +35,6 @@ func NewResp(rd io.Reader) *Resp {
 	return &Resp{reader: bufio.NewReader(rd)}
 }
 
-
 // Read (function that will read the entire buffer recursively)
 func (r *Resp) Read() (Value, error) {
 
@@ -102,9 +101,6 @@ func (r *Resp) readInteger() (int, int, error) {
 	}
 	return int(i64), n, nil
 }
-
-
-// *2\r\n$5\r\nhello\r\n$5\r\nworld\r\n
 
 // Read array
 func (r *Resp) readArray() (Value, error) {
