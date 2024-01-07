@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 
+	"github.com/Kurler3/go_redis/aof"
 	"github.com/Kurler3/go_redis/handlers"
 	"github.com/Kurler3/go_redis/resp"
 )
 
 func main() {
-
 
 	// Listen with TCP on port 8080
 	l, err := net.Listen("tcp", ":6379")
@@ -22,14 +23,48 @@ func main() {
 
 	fmt.Println("Listening on port 6379")
 
+	// Open (create also if doesn't exist) AOF File
+	aof, err := aof.NewAof("database.aof")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Close AOF file at the end of the program
+	defer aof.Close()
+
+	// Read the AOF file
+	aof.Read(func(value resp.Value) {
+
+		// Get command
+		command := strings.ToUpper(value.Array[0].Bulk)
+		
+		// Get the arguments
+		args := value.Array[1:]
+
+		// Get handler and check if it is ok or not (if not ok => log error)
+		handler, ok := handlers.Handlers[command]
+
+		// If not ok
+		if !ok {
+			fmt.Println("Invalid command: ", command)
+			return
+		}
+
+		// Write to in memory sets
+		handler(args)
+	})
+
 	// Accept connections
 	conn, err := l.Accept()
 
+	// If no error while connecting to client
 	if err != nil {
 		fmt.Println("Error while accepting connection: ", err)
 		os.Exit(1)
 	}
 
+	// Log connection accepted
 	fmt.Println("Connection accepted!")
 
 	// Disconnect before returning
@@ -66,7 +101,7 @@ func main() {
 
 
 		// Get the command (first item of the array.bulk)
-		command := value.Array[0].Bulk
+		command := strings.ToUpper(value.Array[0].Bulk)
 
 		if command == "COMMAND" {
 			// Write the result to the client
@@ -88,11 +123,16 @@ func main() {
 			continue
 		}
 
+		if command == "SET" || command == "HSET" {
+			aof.Write(value)
+		}
+
 		// Get the result from the handler (array of bytes)
 		result := handler(args)
 
 		// Write the result to the client
 		writer.Write(result)
+
 	}
 
 	// Close connection
