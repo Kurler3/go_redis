@@ -16,6 +16,6 @@ This project uses no external library, only Golang and built in functionalities.
 
 ## Installation
 
-Dillinger requires [Golang](https://go.dev/doc/install)
+This project requires [Golang](https://go.dev/doc/install)
 
 Run this command: go run main.go
